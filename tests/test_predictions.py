@@ -1,7 +1,8 @@
 import csv
 from pathlib import Path
 
-from audio_deepfake.training.engine import save_predictions, simple_binary_metrics
+from audio_deepfake.evaluation import binary_classification_metrics
+from audio_deepfake.training.engine import save_predictions
 
 
 def test_prediction_csv_schema(tmp_path: Path) -> None:
@@ -38,8 +39,11 @@ def test_simple_metrics_expose_class_imbalance() -> None:
         {"target": 0, "score": 0.8},
         {"target": 0, "score": 0.1},
     ]
-    metrics = simple_binary_metrics(rows)
+    metrics = binary_classification_metrics(rows)
     assert metrics["accuracy"] == 0.6
-    assert metrics["bonafide_recall"] == 0.5
+    assert metrics["recall"] == 0.5
     assert metrics["spoof_recall"] == 2 / 3
     assert metrics["balanced_accuracy"] == (0.5 + 2 / 3) / 2
+    assert metrics["precision"] == 0.5
+    assert metrics["f1"] == 0.5
+    assert metrics["eer"] == 1 / 3

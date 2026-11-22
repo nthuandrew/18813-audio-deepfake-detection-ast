@@ -14,6 +14,9 @@ def run(
     config_path: str | Path,
     seed_override: int | None = None,
     output_override: str | Path | None = None,
+    epochs_override: int | None = None,
+    max_train_samples: int | None = None,
+    max_dev_samples: int | None = None,
 ) -> None:
     try:
         import torch
@@ -24,12 +27,13 @@ def run(
         ) from exc
 
     from .data.dataset import ASVspoofDataset
+    from .evaluation import binary_classification_metrics
     from .models import build_model
     from .training.engine import (
         predict,
         save_history,
+        save_metrics,
         save_predictions,
-        simple_binary_metrics,
         train_one_epoch,
     )
     from .training.reproducibility import select_device, set_seed
@@ -42,6 +46,12 @@ def run(
     experiment["seed"] = seed
     if output_override is not None:
         experiment["output_dir"] = str(output_override)
+    if epochs_override is not None:
+        train_config["epochs"] = epochs_override
+    if max_train_samples is not None:
+        train_config["max_train_samples"] = max_train_samples
+    if max_dev_samples is not None:
+        train_config["max_dev_samples"] = max_dev_samples
     set_seed(seed)
 
     output_dir = Path(experiment["output_dir"])
@@ -49,8 +59,20 @@ def run(
     with (output_dir / "config.yaml").open("w", encoding="utf-8") as handle:
         yaml.safe_dump(config, handle, sort_keys=False)
 
-    train_dataset = ASVspoofDataset(data_config["la_root"], "train", data_config)
-    dev_dataset = ASVspoofDataset(data_config["la_root"], "dev", data_config)
+    train_dataset = ASVspoofDataset(
+        data_config["la_root"],
+        "train",
+        data_config,
+        max_samples=train_config.get("max_train_samples"),
+        seed=seed,
+    )
+    dev_dataset = ASVspoofDataset(
+        data_config["la_root"],
+        "dev",
+        data_config,
+        max_samples=train_config.get("max_dev_samples"),
+        seed=seed,
+    )
     generator = torch.Generator().manual_seed(seed)
     loader_kwargs = {
         "batch_size": int(train_config["batch_size"]),
@@ -89,15 +111,18 @@ def run(
     for epoch in range(1, int(train_config["epochs"]) + 1):
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         dev_loss, predictions = predict(model, dev_loader, criterion, device)
-        dev_metrics = simple_binary_metrics(predictions)
+        dev_metrics = binary_classification_metrics(predictions)
         scheduler.step(dev_loss)
         record = {
             "epoch": epoch,
             "train_loss": train_loss,
             "dev_loss": dev_loss,
+            "dev_eer": dev_metrics["eer"],
             "dev_accuracy": dev_metrics["accuracy"],
             "dev_balanced_accuracy": dev_metrics["balanced_accuracy"],
-            "dev_bonafide_recall": dev_metrics["bonafide_recall"],
+            "dev_precision": dev_metrics["precision"],
+            "dev_recall": dev_metrics["recall"],
+            "dev_f1": dev_metrics["f1"],
             "dev_spoof_recall": dev_metrics["spoof_recall"],
             "learning_rate": optimizer.param_groups[0]["lr"],
         }
@@ -118,6 +143,7 @@ def run(
                 output_dir / "best.pt",
             )
             save_predictions(predictions, output_dir / "dev_predictions.csv")
+            save_metrics(dev_metrics, output_dir / "dev_metrics.json")
         else:
             epochs_without_improvement += 1
             if epochs_without_improvement >= max_patience:
@@ -134,8 +160,26 @@ def main() -> None:
     parser.add_argument(
         "--output-dir", type=Path, help="Override experiment.output_dir."
     )
+    parser.add_argument("--epochs", type=int, help="Override training.epochs.")
+    parser.add_argument(
+        "--max-train-samples",
+        type=int,
+        help="Use a deterministic training subset for smoke tests.",
+    )
+    parser.add_argument(
+        "--max-dev-samples",
+        type=int,
+        help="Use a deterministic development subset for smoke tests.",
+    )
     args = parser.parse_args()
-    run(args.config, seed_override=args.seed, output_override=args.output_dir)
+    run(
+        args.config,
+        seed_override=args.seed,
+        output_override=args.output_dir,
+        epochs_override=args.epochs,
+        max_train_samples=args.max_train_samples,
+        max_dev_samples=args.max_dev_samples,
+    )
 
 
 if __name__ == "__main__":

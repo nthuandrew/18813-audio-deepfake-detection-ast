@@ -79,6 +79,20 @@ choice. Train it with:
 add-train --config configs/cnn_baseline.yaml
 ```
 
+Before a full run, verify the end-to-end GPU pipeline on deterministic subsets:
+
+```bash
+add-train \
+  --config configs/cnn_baseline.yaml \
+  --epochs 1 \
+  --max-train-samples 2048 \
+  --max-dev-samples 1024 \
+  --output-dir outputs/cnn_baseline/smoke_seed_42
+```
+
+Subset metrics only verify that the pipeline learns and writes artifacts; do
+not report them as final experimental results.
+
 Run the planned five seeds without editing the shared config (each run stores
 its fully resolved config):
 
@@ -103,11 +117,12 @@ development predictions are written beneath `outputs/`, which Git ignores.
 Threshold selection and test metrics must use the development predictions, not
 evaluation labels.
 
-For a quick sanity check, every epoch prints and records development accuracy,
-balanced accuracy, bona-fide recall, and spoof recall at a fixed score threshold
-of 0.5. Prefer balanced accuracy for monitoring because the dataset contains far
-more spoof than bona-fide samples. These monitoring values do not replace the
-planned EER, confidence-interval, and threshold-tuned evaluation.
+Every epoch prints and records development EER, accuracy, balanced accuracy,
+precision, recall, F1, and spoof recall. Threshold-dependent metrics use a fixed
+score threshold of 0.5 and treat bona fide as the positive class. Prefer EER and
+balanced accuracy for monitoring because the dataset contains far more spoof
+than bona-fide samples. These per-run metrics do not replace the planned
+confidence intervals and development-selected threshold analysis.
 
 ## Contributor interfaces
 
@@ -125,6 +140,21 @@ utterance_id,label,target,score,attack_id
 
 Anirudh's evaluation code can consume this schema for EER, threshold selection,
 attack-wise results, confidence intervals, and noise robustness experiments.
+
+Compute the currently implemented metrics from any standard prediction file:
+
+```bash
+add-evaluate \
+  --predictions outputs/cnn_baseline/seed_42/dev_predictions.csv \
+  --output outputs/cnn_baseline/seed_42/dev_metrics.json
+```
+
+Reported metrics are EER, accuracy, balanced accuracy, precision, recall, F1,
+class recalls, and confusion-matrix counts. The positive class is bona fide.
+
+The first complete train/development CNN run is documented in
+[`reports/baseline_report.md`](reports/baseline_report.md). It is a preliminary
+known-attack baseline; generated checkpoints and prediction files remain local.
 
 Run the lightweight test suite before opening a pull request:
 

@@ -24,6 +24,7 @@ dev = [
 [project.scripts]
 add-validate-data = "audio_deepfake.data.validate:main"
 add-train = "audio_deepfake.train:main"
+add-evaluate = "audio_deepfake.evaluation.evaluate:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

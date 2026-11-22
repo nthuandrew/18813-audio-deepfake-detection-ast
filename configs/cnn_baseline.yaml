@@ -8,7 +8,8 @@ data:
   la_root: data/raw/asvspoof2019/LA
   sample_rate: 16000
   clip_duration_seconds: 4.0
-  n_fft: 512
+  # Zero-pad the 25 ms window for enough frequency bins at 128 Mel bands.
+  n_fft: 1024
   win_length: 400
   hop_length: 160
   n_mels: 128

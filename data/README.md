@@ -237,6 +237,44 @@ If extraction produced an additional nesting level, pass the actual directory
 that directly contains `ASVspoof2019_LA_cm_protocols`, and make the same change
 to `data.la_root` in the experiment config.
 
+## Python usage example
+
+After validation, run the tracked example from the repository root:
+
+```bash
+python3 data/example.py --split train --index 0
+```
+
+It parses the official protocol, resolves the FLAC path, loads the waveform,
+and applies the same fixed-length log-Mel frontend used by CNN and AST. Typical
+output is:
+
+```text
+split:        train
+samples:      25380
+utterance_id: LA_T_...
+label/target: bonafide/1
+attack_id:    -
+audio_path:   data/raw/asvspoof2019/LA/...flac
+feature shape: (1, 128, 401) [channel, mel, frames]
+feature mean:  0.000000
+feature std:   1.000000
+```
+
+Use a non-default extraction location without editing the shared config:
+
+```bash
+python3 data/example.py \
+  --la-root /path/to/ASVspoof2019/LA \
+  --split dev \
+  --index 10
+```
+
+The example source is [`data/example.py`](example.py). Each dataset item is a
+dictionary with `features`, `target`, `utterance_id`, `attack_id`, and `label`.
+The `features` tensor has shape `[1, n_mels, frames]`; `target=1` means bona fide
+and `target=0` means spoof.
+
 ## Experimental use
 
 - Preserve the official train, development, and evaluation partitions.

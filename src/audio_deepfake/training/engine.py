@@ -8,52 +8,6 @@ from pathlib import Path
 from typing import Any
 
 
-def simple_binary_metrics(
-    rows: list[dict[str, Any]], threshold: float = 0.5
-) -> dict[str, float | int]:
-    """Compute leakage-free, dependency-free metrics for quick monitoring.
-
-    A score at or above ``threshold`` predicts bona fide (target 1). Balanced
-    accuracy gives bona fide and spoof equal weight despite class imbalance.
-    This is intentionally small; the full EER/CI analysis belongs to the
-    evaluation pipeline.
-    """
-    if not rows:
-        raise ValueError("Cannot compute metrics from zero predictions")
-
-    true_positive = true_negative = false_positive = false_negative = 0
-    for row in rows:
-        target = int(row["target"])
-        prediction = int(float(row["score"]) >= threshold)
-        if target == 1 and prediction == 1:
-            true_positive += 1
-        elif target == 0 and prediction == 0:
-            true_negative += 1
-        elif target == 0 and prediction == 1:
-            false_positive += 1
-        elif target == 1 and prediction == 0:
-            false_negative += 1
-        else:
-            raise ValueError(f"Binary target must be 0 or 1, got {target}")
-
-    total = len(rows)
-    bonafide_total = true_positive + false_negative
-    spoof_total = true_negative + false_positive
-    bonafide_recall = true_positive / bonafide_total if bonafide_total else 0.0
-    spoof_recall = true_negative / spoof_total if spoof_total else 0.0
-    return {
-        "threshold": threshold,
-        "accuracy": (true_positive + true_negative) / total,
-        "balanced_accuracy": (bonafide_recall + spoof_recall) / 2,
-        "bonafide_recall": bonafide_recall,
-        "spoof_recall": spoof_recall,
-        "true_positive": true_positive,
-        "true_negative": true_negative,
-        "false_positive": false_positive,
-        "false_negative": false_negative,
-    }
-
-
 def train_one_epoch(model: Any, loader: Any, optimizer: Any, criterion: Any, device: Any) -> float:
     model.train()
     total_loss = 0.0
@@ -126,4 +80,12 @@ def save_history(history: list[dict[str, Any]], destination: str | Path) -> None
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         json.dump(history, handle, indent=2)
+        handle.write("\n")
+
+
+def save_metrics(metrics: dict[str, Any], destination: str | Path) -> None:
+    path = Path(destination)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(metrics, handle, indent=2)
         handle.write("\n")

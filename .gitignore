@@ -28,6 +28,7 @@ env/
 # Datasets and generated features
 data/*
 !data/README.md
+!data/example.py
 *.wav
 *.flac
 *.mp3
