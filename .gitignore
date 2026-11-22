@@ -1,0 +1,49 @@
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datasets and generated features
+data/*
+!data/README.md
+*.wav
+*.flac
+*.mp3
+*.npy
+*.npz
+
+# Model checkpoints and experiment artifacts
+checkpoints/
+outputs/
+runs/
+wandb/
+*.ckpt
+*.pt
+*.pth
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
