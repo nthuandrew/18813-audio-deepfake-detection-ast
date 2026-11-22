@@ -212,6 +212,31 @@ print(sample_rate)  # Expected: 16000
 
 Before training, verify that every protocol entry resolves to an existing audio file and that the number of parsed rows matches the official partition counts.
 
+The repository includes a validator that performs both checks for all three
+partitions. After installing the project dependencies, run:
+
+```bash
+add-validate-data --la-root data/raw/asvspoof2019/LA
+```
+
+For a quick protocol-only check that does not scan all FLAC paths:
+
+```bash
+add-validate-data \
+  --la-root data/raw/asvspoof2019/LA \
+  --skip-audio-check
+```
+
+Expected success message:
+
+```text
+Dataset validation PASSED
+```
+
+If extraction produced an additional nesting level, pass the actual directory
+that directly contains `ASVspoof2019_LA_cm_protocols`, and make the same change
+to `data.la_root` in the experiment config.
+
 ## Experimental use
 
 - Preserve the official train, development, and evaluation partitions.
