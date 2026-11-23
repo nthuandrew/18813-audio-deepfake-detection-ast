@@ -155,6 +155,9 @@ class recalls, and confusion-matrix counts. The positive class is bona fide.
 The first complete train/development CNN run is documented in
 [`reports/baseline_report.md`](reports/baseline_report.md). It is a preliminary
 known-attack baseline; generated checkpoints and prediction files remain local.
+Complete CNN evaluation results, including A07-A19 attack-specific metrics and
+confusion counts, are documented in
+[`reports/evaluation_report.md`](reports/evaluation_report.md).
 
 Run the lightweight test suite before opening a pull request:
 
