@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .ast import ASTModel
 from .cnn import CNNBaseline
 
 
@@ -21,8 +22,5 @@ def build_model(config: dict[str, Any]) -> Any:
             dropout=float(config.get("dropout", 0.3)),
         )
     if name == "ast":
-        raise NotImplementedError(
-            "AST is reserved for Cassie's implementation. Add ASTModel and register "
-            "it in audio_deepfake.models.factory.build_model."
-        )
-    raise ValueError(f"Unknown model name {name!r}; supported: cnn (ast extension reserved)")
+        return ASTModel(config)
+    raise ValueError(f"Unknown model name {name!r}; supported: cnn, ast")

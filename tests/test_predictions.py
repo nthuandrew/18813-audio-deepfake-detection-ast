@@ -1,7 +1,10 @@
 import csv
 from pathlib import Path
 
-from audio_deepfake.evaluation import binary_classification_metrics
+from audio_deepfake.evaluation.metrics import (
+    attack_wise_metrics,
+    binary_classification_metrics,
+)
 from audio_deepfake.training.engine import save_predictions
 
 
@@ -47,3 +50,21 @@ def test_simple_metrics_expose_class_imbalance() -> None:
     assert metrics["precision"] == 0.5
     assert metrics["f1"] == 0.5
     assert metrics["eer"] == 1 / 3
+
+
+def test_attack_wise_metrics_reuses_all_bonafide_rows() -> None:
+    rows = [
+        {"target": 1, "score": 0.9, "attack_id": "-"},
+        {"target": 1, "score": 0.1, "attack_id": "-"},
+        {"target": 0, "score": 0.1, "attack_id": "A02"},
+        {"target": 0, "score": 0.9, "attack_id": "A02"},
+        {"target": 0, "score": 0.1, "attack_id": "A01"},
+        {"target": 0, "score": 0.1, "attack_id": "A01"},
+    ]
+    metrics = attack_wise_metrics(rows)
+    assert list(metrics) == ["A01", "A02"]
+    assert metrics["A01"]["true_positive"] == 1
+    assert metrics["A01"]["true_negative"] == 2
+    assert metrics["A01"]["false_negative"] == 1
+    assert metrics["A02"]["true_negative"] == 1
+    assert metrics["A02"]["false_positive"] == 1

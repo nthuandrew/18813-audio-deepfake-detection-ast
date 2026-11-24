@@ -7,7 +7,7 @@ import csv
 import json
 from pathlib import Path
 
-from .metrics import binary_classification_metrics
+from .metrics import attack_wise_metrics, binary_classification_metrics
 
 
 def main() -> None:
@@ -20,6 +20,7 @@ def main() -> None:
     with args.predictions.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     metrics = binary_classification_metrics(rows, threshold=args.threshold)
+    metrics["by_attack"] = attack_wise_metrics(rows, threshold=args.threshold)
     rendered = json.dumps(metrics, indent=2)
     print(rendered)
     if args.output:

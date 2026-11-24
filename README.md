@@ -158,6 +158,27 @@ known-attack baseline; generated checkpoints and prediction files remain local.
 Complete CNN evaluation results, including A07-A19 attack-specific metrics and
 confusion counts, are documented in
 [`reports/evaluation_report.md`](reports/evaluation_report.md).
+The corresponding AST results and attack-wise analysis are documented in
+[`reports/ast_evaluation_report.md`](reports/ast_evaluation_report.md).
+
+Train AST with its dedicated configuration:
+
+```bash
+add-train --config configs/ast.yaml
+```
+
+Generate predictions from any saved CNN or AST checkpoint with:
+
+```bash
+add-predict \
+  --checkpoint outputs/ast/seed_42/best.pt \
+  --split eval \
+  --output outputs/ast/seed_42/eval_predictions.csv
+```
+
+The current CNN and AST reports use different clip durations (4.0 and 10.24
+seconds respectively), so their results are preliminary rather than a fully
+controlled architecture-only comparison.
 
 Run the lightweight test suite before opening a pull request:
 

@@ -13,6 +13,7 @@ dependencies = [
   "soundfile>=0.12,<1",
   "torch>=2.2,<3",
   "torchaudio>=2.2,<3",
+  "transformers>=4.40,<5",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,7 @@ dev = [
 [project.scripts]
 add-validate-data = "audio_deepfake.data.validate:main"
 add-train = "audio_deepfake.train:main"
+add-predict = "audio_deepfake.predict:main"
 add-evaluate = "audio_deepfake.evaluation.evaluate:main"
 
 [tool.setuptools.packages.find]
