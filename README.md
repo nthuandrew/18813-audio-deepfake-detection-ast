@@ -180,6 +180,21 @@ The current CNN and AST reports use different clip durations (4.0 and 10.24
 seconds respectively), so their results are preliminary rather than a fully
 controlled architecture-only comparison.
 
+## Single-file CNN inference
+
+Published CNN checkpoints can be used on WAV, FLAC, or other SoundFile-supported
+audio with the tracked example:
+
+```bash
+python3 baseline_inference.py \
+  --checkpoint artifacts/cnn_baseline/seed_42/best.pt \
+  --audio path/to/audio.flac
+```
+
+The script restores preprocessing from the checkpoint, converts the input to
+mono, resamples when necessary, applies the shared four-second log-Mel frontend,
+and prints a bona-fide score plus the thresholded `bonafide`/`spoof` decision.
+
 Run the lightweight test suite before opening a pull request:
 
 ```bash
