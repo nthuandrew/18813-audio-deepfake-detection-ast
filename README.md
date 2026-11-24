@@ -1,6 +1,6 @@
 # Audio Deepfake Detection Using Audio Spectrogram Transformers
 
-Course project for 18-813: Foundations of Software Engineering.
+Course project for 18-813: Foundations of Responsible AI
 
 ## Team
 
@@ -155,6 +155,45 @@ class recalls, and confusion-matrix counts. The positive class is bona fide.
 The first complete train/development CNN run is documented in
 [`reports/baseline_report.md`](reports/baseline_report.md). It is a preliminary
 known-attack baseline; generated checkpoints and prediction files remain local.
+Complete CNN evaluation results, including A07-A19 attack-specific metrics and
+confusion counts, are documented in
+[`reports/evaluation_report.md`](reports/evaluation_report.md).
+The corresponding AST results and attack-wise analysis are documented in
+[`reports/ast_evaluation_report.md`](reports/ast_evaluation_report.md).
+
+Train AST with its dedicated configuration:
+
+```bash
+add-train --config configs/ast.yaml
+```
+
+Generate predictions from any saved CNN or AST checkpoint with:
+
+```bash
+add-predict \
+  --checkpoint outputs/ast/seed_42/best.pt \
+  --split eval \
+  --output outputs/ast/seed_42/eval_predictions.csv
+```
+
+The current CNN and AST reports use different clip durations (4.0 and 10.24
+seconds respectively), so their results are preliminary rather than a fully
+controlled architecture-only comparison.
+
+## Single-file CNN inference
+
+Published CNN checkpoints can be used on WAV, FLAC, or other SoundFile-supported
+audio with the tracked example:
+
+```bash
+python3 baseline_inference.py \
+  --checkpoint artifacts/cnn_baseline/seed_42/best.pt \
+  --audio path/to/audio.flac
+```
+
+The script restores preprocessing from the checkpoint, converts the input to
+mono, resamples when necessary, applies the shared four-second log-Mel frontend,
+and prints a bona-fide score plus the thresholded `bonafide`/`spoof` decision.
 
 Run the lightweight test suite before opening a pull request:
 

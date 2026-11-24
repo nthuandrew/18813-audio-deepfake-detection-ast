@@ -48,3 +48,6 @@ wandb/
 *.log
 tmp/
 temp/
+
+# Small, intentionally published baseline checkpoints
+!artifacts/cnn_baseline/**/best.pt
