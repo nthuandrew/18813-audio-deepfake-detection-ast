@@ -111,3 +111,31 @@ def binary_classification_metrics(
         "false_positive": false_positive,
         "false_negative": false_negative,
     }
+
+
+def attack_wise_metrics(
+    rows: Sequence[Mapping[str, Any]], threshold: float = 0.5
+) -> dict[str, dict[str, float | int]]:
+    """Compute metrics for each spoof attack plus all bona-fide examples.
+
+    ASVspoof bona-fide rows use ``attack_id = '-'``. Each attack-specific
+    subset includes every bona-fide row and only the spoof rows for that attack,
+    matching the evaluation report's per-attack construction.
+    """
+    attack_ids = sorted(
+        {str(row["attack_id"]) for row in rows if row["attack_id"] != "-"}
+    )
+    if not attack_ids:
+        raise ValueError("Prediction rows contain no spoof attack IDs")
+
+    results: dict[str, dict[str, float | int]] = {}
+    for attack_id in attack_ids:
+        subset = [
+            row
+            for row in rows
+            if row["attack_id"] == "-" or row["attack_id"] == attack_id
+        ]
+        results[attack_id] = binary_classification_metrics(
+            subset, threshold=threshold
+        )
+    return results
