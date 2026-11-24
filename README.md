@@ -1,6 +1,6 @@
 # Audio Deepfake Detection Using Audio Spectrogram Transformers
 
-Course project for 18-813: Foundations of Software Engineering.
+Course project for 18-813: Foundations of Responsible AI
 
 ## Team
 
