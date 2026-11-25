@@ -248,9 +248,10 @@ Keep per-seed results separate. Aggregate means and confidence intervals only
 after all five runs use the same split, metric definitions, and threshold
 selection procedure.
 
-## Single-audio CNN inference
+## Single-audio inference
 
-The tracked example accepts WAV, FLAC, and other SoundFile-supported audio:
+The tracked examples accept WAV, FLAC, and other SoundFile-supported audio.
+CNN inference:
 
 ```bash
 python3 baseline_inference.py \
@@ -258,10 +259,20 @@ python3 baseline_inference.py \
   --audio path/to/audio.flac
 ```
 
-It restores preprocessing from the checkpoint, converts audio to mono,
-resamples when necessary, and prints the bona-fide score and thresholded label.
-This script is for the CNN baseline; dataset-level CNN and AST evaluation should
-use the shared `add-predict` workflow above.
+AST inference:
+
+```bash
+python3 ast_inference.py \
+  --checkpoint artifacts/ast/seed_42/best.pt \
+  --audio path/to/audio.flac
+```
+
+Both scripts use the same inference helper. They restore architecture-specific
+preprocessing from the checkpoint, convert audio to mono, resample when
+necessary, and print the model name, bona-fide score, threshold, and predicted
+label. AST reconstruction also requires access to the pretrained Hugging Face
+checkpoint named in the saved model config. Dataset-level evaluation should use
+the shared `add-predict` workflow above.
 
 ## Reports
 
@@ -280,5 +291,5 @@ Run the test suite before opening a pull request:
 
 ```bash
 pytest
-ruff check src tests data/example.py baseline_inference.py
+ruff check src tests data/example.py baseline_inference.py ast_inference.py
 ```
