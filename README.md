@@ -70,31 +70,63 @@ add-validate-data --la-root data/raw/asvspoof2019/LA
 This checks official protocol counts and verifies that every listed FLAC file
 exists. Do not start training unless it reports `Dataset validation PASSED`.
 
-## CNN baseline
+## Models
 
-The checked-in baseline config documents every preprocessing and training
-choice. Train it with:
+CNN and AST use the same dataset loader, binary labels, prediction schema,
+training loop, and evaluation CLI. Architecture-specific preprocessing is
+stored in each checkpoint and restored automatically during prediction.
 
-```bash
-add-train --config configs/cnn_baseline.yaml
+| Setting | CNN baseline | AST |
+| --- | --- | --- |
+| Config | `configs/cnn_baseline.yaml` | `configs/ast.yaml` |
+| Model name in config | `cnn` | `ast` |
+| Output namespace | `cnn_baseline` | `ast` |
+| Input clip | 4.0 seconds | 10.24 seconds |
+| Mel bands | 128 | 128 |
+| Initialization | Random | `MIT/ast-finetuned-audioset-10-10-0.4593` |
+| Published checkpoint | `artifacts/cnn_baseline/seed_<N>/best.pt` | `artifacts/ast/seed_<N>/best.pt` |
+| Published metrics | `artifacts/cnn_baseline/seed_<N>/eval_metrics.json` | `artifacts/ast/seed_<N>/eval_metrics.json` |
+
+The different clip durations mean the current results are preliminary rather
+than a controlled architecture-only comparison. Do not change preprocessing at
+evaluation time: `add-predict` reads the resolved data and model configuration
+embedded in the selected checkpoint.
+
+### Score and label convention
+
+```text
+target = 1 and high score -> bona fide
+target = 0 and low score  -> spoof
 ```
 
-Before a full run, verify the end-to-end GPU pipeline on deterministic subsets:
+Both models return one raw bona-fide logit per sample. Prediction applies a
+sigmoid and writes the same CSV columns for CNN and AST:
+
+```text
+utterance_id,label,target,score,attack_id
+```
+
+## Training
+
+Train one CNN seed:
 
 ```bash
 add-train \
   --config configs/cnn_baseline.yaml \
-  --epochs 1 \
-  --max-train-samples 2048 \
-  --max-dev-samples 1024 \
-  --output-dir outputs/cnn_baseline/smoke_seed_42
+  --seed 42 \
+  --output-dir outputs/cnn_baseline/seed_42
 ```
 
-Subset metrics only verify that the pipeline learns and writes artifacts; do
-not report them as final experimental results.
+Train one AST seed:
 
-Run the planned five seeds without editing the shared config (each run stores
-its fully resolved config):
+```bash
+add-train \
+  --config configs/ast.yaml \
+  --seed 42 \
+  --output-dir outputs/ast/seed_42
+```
+
+The same pattern applies to the planned five seeds:
 
 ```bash
 for seed in 42 43 44 45 46; do
@@ -102,88 +134,123 @@ for seed in 42 43 44 45 46; do
     --config configs/cnn_baseline.yaml \
     --seed "$seed" \
     --output-dir "outputs/cnn_baseline/seed_${seed}"
+
+  add-train \
+    --config configs/ast.yaml \
+    --seed "$seed" \
+    --output-dir "outputs/ast/seed_${seed}"
 done
 ```
 
-The score convention is fixed across the project:
+Each run writes its resolved `config.yaml`, `history.json`, best-development-loss
+`best.pt`, `dev_predictions.csv`, and `dev_metrics.json` beneath `outputs/`.
+Generated outputs are ignored by Git.
+
+For a quick CNN pipeline check, deterministic subsets can be selected with
+`--max-train-samples` and `--max-dev-samples`. Subset results are smoke tests
+only and must not be reported as final results.
+
+## Published checkpoints
+
+CNN checkpoints are stored directly in this repository. Fine-tuned AST
+checkpoints can be downloaded from
+[Google Drive](https://drive.google.com/drive/folders/1PVUkPOT6YelrAOSSj7bwpgfqOhnmArI6?usp=sharing).
+Place the AST files alongside their checked-in configs and metrics:
 
 ```text
-target = 1 and high score -> bona fide
-target = 0 and low score  -> spoof
+artifacts/
+├── cnn_baseline/
+│   ├── seed_42/
+│   │   ├── best.pt
+│   │   ├── config.yaml
+│   │   └── eval_metrics.json
+│   └── seed_43 ... seed_46/
+└── ast/
+    ├── seed_42/
+    │   ├── best.pt             # downloaded separately
+    │   ├── config.yaml
+    │   └── eval_metrics.json
+    └── seed_43 ... seed_46/
 ```
 
-The best development-loss checkpoint, copied config, loss history, and
-development predictions are written beneath `outputs/`, which Git ignores.
-Threshold selection and test metrics must use the development predictions, not
-evaluation labels.
+The checked-in `eval_metrics.json` files allow result inspection without the
+dataset or checkpoint. Reproducing predictions requires the ASVspoof data and
+the corresponding `best.pt`.
 
-Every epoch prints and records development EER, accuracy, balanced accuracy,
-precision, recall, F1, and spoof recall. Threshold-dependent metrics use a fixed
-score threshold of 0.5 and treat bona fide as the positive class. Prefer EER and
-balanced accuracy for monitoring because the dataset contains far more spoof
-than bona-fide samples. These per-run metrics do not replace the planned
-confidence intervals and development-selected threshold analysis.
+## Evaluation workflow for CNN and AST
 
-## Contributor interfaces
+The commands below are deliberately model-agnostic. Set `MODEL` to either
+`cnn_baseline` or `ast`; all remaining steps are identical.
 
-The shared model contract is implemented in
-`audio_deepfake.models.factory.build_model`: a model receives a float tensor of
-shape `[batch, 1, n_mels, frames]` and returns raw bona-fide logits of shape
-`[batch]`. Cassie's AST implementation can add an `ast` factory branch without
-changing the dataset or training loop.
+### 1. Generate development predictions
 
-`audio_deepfake.training.engine.predict` emits rows with this stable schema:
-
-```text
-utterance_id,label,target,score,attack_id
-```
-
-Anirudh's evaluation code can consume this schema for EER, threshold selection,
-attack-wise results, confidence intervals, and noise robustness experiments.
-
-Compute the currently implemented metrics from any standard prediction file:
+Development predictions are used for sanity checks and any threshold selection.
+Never select a threshold using evaluation labels.
 
 ```bash
-add-evaluate \
-  --predictions outputs/cnn_baseline/seed_42/dev_predictions.csv \
-  --output outputs/cnn_baseline/seed_42/dev_metrics.json
+MODEL=cnn_baseline  # change to: MODEL=ast
+SEED=42
+
+add-predict \
+  --checkpoint "artifacts/${MODEL}/seed_${SEED}/best.pt" \
+  --split dev \
+  --output "outputs/${MODEL}/seed_${SEED}/dev_predictions.csv"
 ```
 
-Reported metrics are EER, accuracy, balanced accuracy, precision, recall, F1,
-class recalls, and confusion-matrix counts. The positive class is bona fide.
-
-The first complete train/development CNN run is documented in
-[`reports/baseline_report.md`](reports/baseline_report.md). It is a preliminary
-known-attack baseline; generated checkpoints and prediction files remain local.
-Complete CNN evaluation results, including A07-A19 attack-specific metrics and
-confusion counts, are documented in
-[`reports/evaluation_report.md`](reports/evaluation_report.md).
-The corresponding AST results and attack-wise analysis are documented in
-[`reports/ast_evaluation_report.md`](reports/ast_evaluation_report.md).
-
-Train AST with its dedicated configuration:
-
-```bash
-add-train --config configs/ast.yaml
-```
-
-Generate predictions from any saved CNN or AST checkpoint with:
+### 2. Generate evaluation predictions
 
 ```bash
 add-predict \
-  --checkpoint outputs/ast/seed_42/best.pt \
+  --checkpoint "artifacts/${MODEL}/seed_${SEED}/best.pt" \
   --split eval \
-  --output outputs/ast/seed_42/eval_predictions.csv
+  --output "outputs/${MODEL}/seed_${SEED}/eval_predictions.csv"
 ```
 
-The current CNN and AST reports use different clip durations (4.0 and 10.24
-seconds respectively), so their results are preliminary rather than a fully
-controlled architecture-only comparison.
+`add-predict` reconstructs CNN or AST from the checkpoint, loads the checkpoint's
+preprocessing settings, and preserves the official split order and attack IDs.
 
-## Single-file CNN inference
+### 3. Compute metrics
 
-Published CNN checkpoints can be used on WAV, FLAC, or other SoundFile-supported
-audio with the tracked example:
+Use the default threshold of 0.5, or pass a threshold selected from development
+predictions:
+
+```bash
+add-evaluate \
+  --predictions "outputs/${MODEL}/seed_${SEED}/eval_predictions.csv" \
+  --threshold 0.5 \
+  --output "outputs/${MODEL}/seed_${SEED}/eval_metrics.json"
+```
+
+The JSON contains overall EER, accuracy, balanced accuracy, precision, recall,
+F1, bona-fide recall, spoof recall, and confusion counts. `by_attack` contains
+the same metrics for A07-A19, where each attack-specific subset uses all
+evaluation bona-fide samples plus the spoof samples from that attack.
+
+### 4. Evaluate all five seeds
+
+```bash
+MODEL=cnn_baseline  # change to: MODEL=ast
+
+for seed in 42 43 44 45 46; do
+  add-predict \
+    --checkpoint "artifacts/${MODEL}/seed_${seed}/best.pt" \
+    --split eval \
+    --output "outputs/${MODEL}/seed_${seed}/eval_predictions.csv"
+
+  add-evaluate \
+    --predictions "outputs/${MODEL}/seed_${seed}/eval_predictions.csv" \
+    --threshold 0.5 \
+    --output "outputs/${MODEL}/seed_${seed}/eval_metrics.json"
+done
+```
+
+Keep per-seed results separate. Aggregate means and confidence intervals only
+after all five runs use the same split, metric definitions, and threshold
+selection procedure.
+
+## Single-audio CNN inference
+
+The tracked example accepts WAV, FLAC, and other SoundFile-supported audio:
 
 ```bash
 python3 baseline_inference.py \
@@ -191,33 +258,27 @@ python3 baseline_inference.py \
   --audio path/to/audio.flac
 ```
 
-The script restores preprocessing from the checkpoint, converts the input to
-mono, resamples when necessary, applies the shared four-second log-Mel frontend,
-and prints a bona-fide score plus the thresholded `bonafide`/`spoof` decision.
+It restores preprocessing from the checkpoint, converts audio to mono,
+resamples when necessary, and prints the bona-fide score and thresholded label.
+This script is for the CNN baseline; dataset-level CNN and AST evaluation should
+use the shared `add-predict` workflow above.
 
-Run the lightweight test suite before opening a pull request:
+## Reports
+
+- Initial CNN train/development run: [`reports/baseline_report.md`](reports/baseline_report.md)
+- CNN evaluation and A07-A19 analysis: [`reports/evaluation_report.md`](reports/evaluation_report.md)
+- AST evaluation and A07-A19 analysis: [`reports/ast_evaluation_report.md`](reports/ast_evaluation_report.md)
+
+## Contributor interfaces
+
+`audio_deepfake.models.factory.build_model` is the shared model boundary. Both
+CNN and AST accept `[batch, 1, n_mels, frames]` tensors and return raw bona-fide
+logits shaped `[batch]`. Evaluators should consume prediction CSVs rather than
+calling architecture-specific model internals.
+
+Run the test suite before opening a pull request:
 
 ```bash
 pytest
-```
-
-## Fine-tuned AST checkpoints
-
-The fine-tuned AST checkpoints can be downloaded from
-[here](https://drive.google.com/drive/folders/1PVUkPOT6YelrAOSSj7bwpgfqOhnmArI6?usp=sharing).
-
-Download and place the checkpoints under:
-
-```text
-artifacts/ast/
-├── seed_42/
-│   └── best.pt
-├── seed_43/
-│   └── best.pt
-├── seed_44/
-│   └── best.pt
-├── seed_45/
-│   └── best.pt
-└── seed_46/
-    └── best.pt
+ruff check src tests data/example.py baseline_inference.py
 ```
