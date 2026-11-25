@@ -1,0 +1,30 @@
+experiment:
+  name: ast
+  seed: 46
+  output_dir: outputs/ast/seed_46
+data:
+  la_root: data/raw/asvspoof2019/LA
+  sample_rate: 16000
+  clip_duration_seconds: 10.24
+  n_fft: 1024
+  win_length: 400
+  hop_length: 160
+  n_mels: 128
+  f_min: 0
+  f_max: 8000
+  normalize: per_sample
+  num_workers: 4
+model:
+  name: ast
+  checkpoint: MIT/ast-finetuned-audioset-10-10-0.4593
+  max_length: 1024
+training:
+  epochs: 10
+  batch_size: 4
+  learning_rate: 1.0e-05
+  weight_decay: 0.01
+  use_class_weight: true
+  scheduler_patience: 2
+  scheduler_factor: 0.5
+  early_stopping_patience: 2
+  device: auto

@@ -200,3 +200,24 @@ Run the lightweight test suite before opening a pull request:
 ```bash
 pytest
 ```
+
+## Fine-tuned AST checkpoints
+
+The fine-tuned AST checkpoints can be downloaded from
+[here](https://drive.google.com/drive/folders/1PVUkPOT6YelrAOSSj7bwpgfqOhnmArI6?usp=sharing).
+
+Download and place the checkpoints under:
+
+```text
+artifacts/ast/
+├── seed_42/
+│   └── best.pt
+├── seed_43/
+│   └── best.pt
+├── seed_44/
+│   └── best.pt
+├── seed_45/
+│   └── best.pt
+└── seed_46/
+    └── best.pt
+```
